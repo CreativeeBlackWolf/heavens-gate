@@ -33,6 +33,7 @@ class UserModel(BaseModel):
 class ConnectionPeerModel(BaseModel):
     user = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
     public_key = CharField()
+    private_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
     peer_name = CharField(default=None, null=True)

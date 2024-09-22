@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
 from core.db.models import ConnectionPeerModel, UserModel
+from core.wg.keygen import (generate_preshared_key, generate_private_key,
+                            generate_public_key)
 
 
 class Client(BaseModel):
@@ -55,13 +57,18 @@ class Client(BaseModel):
 
     def add_peer(self,
                  public_key: str,
+                 private_key: str,
                  preshared_key: str,
                  shared_ips: str,
                  peer_name: str = None) -> ConnectionPeer:
+        private_peer_key = generate_private_key()
+        public_peer_key = generate_public_key(private_peer_key)
+        preshared_peer_key = generate_preshared_key()
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
-            public_key=public_key,
-            preshared_key=preshared_key,
+            public_key=public_peer_key,
+            private_key=private_peer_key,
+            preshared_key=preshared_peer_key,
             shared_ips=shared_ips,
             peer_name=peer_name
         ))

@@ -30,6 +30,7 @@ class Config:
         return self.Server(
             user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
             private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
+            public_key=self.cfg.get("Server", "PublicKey", fallback="@!ChAngEME!@"),
             endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
             endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000")
         )
@@ -69,8 +70,9 @@ class Config:
             self.path = path
 
     class Server:
-        def __init__(self, user_ip: str, private_key: str, endpoint_ip: str, endpoint_port: str):
+        def __init__(self, user_ip: str, private_key: str, public_key: str, endpoint_ip: str, endpoint_port: str):
             self.user_ip = user_ip
             self.private_key = private_key
+            self.public_key = public_key
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port

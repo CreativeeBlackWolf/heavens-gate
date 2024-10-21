@@ -2,7 +2,7 @@ import datetime
 
 from peewee import (CharField, DateTimeField, ForeignKeyField, IntegerField,
                     Model)
-from playhouse.sqlite_ext import SqliteExtDatabase
+from playhouse.sqlite_ext import AutoIncrementField, SqliteExtDatabase
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 
@@ -31,8 +31,10 @@ class UserModel(BaseModel):
         table_name = "Users"
 
 class ConnectionPeerModel(BaseModel):
+    id = AutoIncrementField()
     user = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
     public_key = CharField()
+    private_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
     peer_name = CharField(default=None, null=True)

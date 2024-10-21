@@ -12,7 +12,8 @@ class ClientGettersMiddleware(BaseMiddleware):
         "ban", "anathem", # ban func
         "unban", "pardon", "mercy", # unban
         "whisper", # broadcast
-        "get_user" # get_user
+        "get_user", # get_user
+        "add_peer", # add_peer
     ]
 
     async def __call__(

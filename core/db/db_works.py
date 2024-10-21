@@ -1,12 +1,14 @@
 from typing import Optional, Union
 
 from multimethod import multimethod
-from peewee import DoesNotExist
+from peewee import SQL, DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
 from core.db.models import ConnectionPeerModel, UserModel
+from core.wg.keygen import (generate_preshared_key, generate_private_key,
+                            generate_public_key)
 
 
 class Client(BaseModel):
@@ -54,14 +56,24 @@ class Client(BaseModel):
         return self.__update_client(status=status.value)
 
     def add_peer(self,
-                 public_key: str,
-                 preshared_key: str,
                  shared_ips: str,
+                 public_key: Optional[str] = None,
+                 private_key: Optional[str] = None,
+                 preshared_key: Optional[str] = None,
                  peer_name: str = None) -> ConnectionPeer:
+        """
+        Adds peer to database. Automatically generates peer keys if they're not present in arguments.
+
+        Returns `ConnectionPeer`.
+        """
+        private_peer_key = private_key or generate_private_key()
+        public_peer_key = public_key or generate_public_key(private_peer_key)
+        preshared_peer_key = preshared_key or generate_preshared_key()
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
-            public_key=public_key,
-            preshared_key=preshared_key,
+            public_key=public_peer_key,
+            private_key=private_peer_key,
+            preshared_key=preshared_peer_key,
             shared_ips=shared_ips,
             peer_name=peer_name
         ))
@@ -109,9 +121,10 @@ class Client(BaseModel):
             bool: True if successfull. False otherwise
         """
         # ? weird flex but okay.
+        formatted_ip = ip_address.replace(".", "\\.")
         return (ConnectionPeerModel.delete()
                 .where(ConnectionPeerModel.shared_ips.regexp(
-                    rf"(?:[, ]|^){ip_address.replace('.', '\\.')}(?:[, ]|$)"
+                    rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
                 ) & ConnectionPeerModel.user == self.__model)
                 .execute()) == 1
 
@@ -151,6 +164,14 @@ class ClientFactory(BaseModel):
     def select_peers() -> list[ConnectionPeer]:
         return [ConnectionPeer.model_validate(i) for i in ConnectionPeerModel.select()]
 
+    @staticmethod
+    def get_peer(ip_address: str) -> Optional[ConnectionPeer]:
+        try:
+            model = ConnectionPeerModel.get(ConnectionPeerModel.shared_ips == ip_address)
+            return ConnectionPeer.model_validate(model)
+        except DoesNotExist:
+            return None
+
     @multimethod
     @staticmethod
     def delete_client(ip_address: str) -> bool:
@@ -163,3 +184,10 @@ class ClientFactory(BaseModel):
     @staticmethod
     def count_clients() -> int:
         return UserModel.select().count()
+
+    @staticmethod
+    def get_latest_peer_id() -> int:
+        try:
+            return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0].id
+        except IndexError: #? assuming that there're no peers in DB
+            return 0

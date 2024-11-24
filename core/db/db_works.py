@@ -57,6 +57,10 @@ class Client(BaseModel):
         self.userdata.status = status
         return self.__update_client(status=status.value)
 
+    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
+        self.userdata.expire_time = expire_time
+        return self.__update_client(expire_time=expire_time)
+
     def add_peer(self,
                  shared_ips: str,
                  public_key: Optional[str] = None,

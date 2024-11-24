@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Optional
 
 from aiogram.filters.callback_data import CallbackData
 
@@ -12,6 +11,7 @@ class UserActionsEnum(StrEnum):
     UPDATE_DATA = "update"
     CHANGE_PEER_NAME = "change_peer_name"
     CONTACT_ADMIN = "contact_admin"
+    WHISPER_USER = "whisper"
 
 
 class YesOrNoEnum(StrEnum):

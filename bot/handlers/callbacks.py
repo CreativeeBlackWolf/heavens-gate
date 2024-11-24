@@ -16,8 +16,9 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
+from bot.utils.message_utils import preview_message
 from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
-                              RenamePeerStates)
+                              RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
                            interval_observer, wghub)
@@ -160,7 +161,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
     message_data = await state.get_data()
     await state.clear()
 
-    msg = "🤫 <b>Сообщение от администрации</b>:\n\n" \
+    msg = "📨 <b>Сообщение от администрации</b>:\n\n" \
           if len(message_data["user_ids"]) <= 1 \
           else "✉️ <b>Рассылка от администрации</b>:\n\n"
 
@@ -201,6 +202,15 @@ async def contact_admin_callback(callback: CallbackQuery, state: FSMContext):
                                   " (или <code>отмена</code>, если передумал):", reply_markup=cancel_keyboard())
     await state.set_state(ContactAdminStates.message_entering)
 
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.WHISPER_USER)
+)
+async def whisper_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
+    await callback.answer()
+    await state.set_data({"user_id": callback_data.user_id})
+    await state.set_state(WhisperStates.message_entering)
+    await callback.message.answer("✏️ Введи сообщение:", reply_markup=cancel_keyboard())
+
 # tecnically it is not a callback, but who cares...
 # idk how to call this func properly, so yes
 @router.message(RenamePeerStates.name_entering)
@@ -238,3 +248,13 @@ async def contact_admin(message: Message, state: FSMContext):
             f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
         )
     await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")
+
+@router.message(WhisperStates.message_entering)
+async def whisper_state(message: Message, state: FSMContext):
+    user_id = (await state.get_data())["user_id"]
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        await state.clear()
+        return
+
+    await preview_message(message.text, message.from_user.id, state, [user_id])

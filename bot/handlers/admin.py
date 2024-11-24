@@ -6,12 +6,12 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.handlers.keyboards import (build_user_actions_keyboard,
-                                    preview_keyboard)
+from bot.handlers.keyboards import build_user_actions_keyboard, cancel_keyboard
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
-from bot.utils.states import PreviewMessageStates
+from bot.utils.message_utils import preview_message
+from bot.utils.states import WhisperStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_cfg, bot_instance, ip_queue, wghub
+from config.loader import bot_cfg, ip_queue, wghub
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.logs import bot_logger
@@ -22,19 +22,6 @@ router.message.filter(
 )
 router.message.middleware(ClientGettersMiddleware())
 
-
-async def preview_message(msg: str, chat_id: int, state: FSMContext, clients_list: list[int]):
-    await state.set_state(PreviewMessageStates.preview)
-    await state.set_data(data=dict(message=msg, user_ids=clients_list))
-
-    await bot_instance.send_message(chat_id=chat_id, text=
-        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n"
-        + "\n--------------------------------------------\n"
-        + msg
-        + "\n--------------------------------------------"
-        + "\n<b>Отправить?</b>",
-        reply_markup=preview_keyboard()
-    )
 
 @router.message(Command("reboot"))
 async def reboot(message: Message) -> None:
@@ -67,11 +54,13 @@ async def broadcast(message: Message, state: FSMContext):
     await preview_message(msg, message.chat.id, state, clients_list)
 
 @router.message(Command("whisper"))
-async def whisper(message: Message, state: FSMContext, client: Client):
+async def whisper(message: Message, client: Client, state: FSMContext):
     args = message.html_text.split()
 
     if len(args) <= 2:
-        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
+        await state.set_data({"user_id": client.userdata.telegram_id})
+        await state.set_state(WhisperStates.message_entering)
+        await message.answer("✏️ Введи сообщение:", reply_markup=cancel_keyboard())
         return
 
     msg = message.html_text.split(maxsplit=2)[2]

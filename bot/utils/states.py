@@ -10,3 +10,6 @@ class RenamePeerStates(StatesGroup):
 
 class ContactAdminStates(StatesGroup):
     message_entering = State()
+
+class WhisperStates(StatesGroup):
+    message_entering = State()

@@ -111,7 +111,7 @@ async def add_peer(message: Message, client: Client):
         await message.answer("❌ Нет доступных IP-адресов!")
         bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
         return
-    new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}")
+    new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
     wghub.add_peer(new_peer)
     with bot_logger.contextualize(peer=new_peer):
         bot_logger.info(f"New peer was created manually by {message.from_user.username}")

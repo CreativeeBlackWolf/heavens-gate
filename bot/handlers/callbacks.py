@@ -20,7 +20,7 @@ from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
                               RenamePeerStates)
 from bot.utils.user_helper import get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
-                           interval_observer, wghub)
+                           interval_observer, server_cfg, wghub)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
@@ -64,20 +64,29 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
     peers = client.get_peers()
     media_group = MediaGroupBuilder()
+    additional_interface_data = None
     await state.clear()
+
+    if wghub.is_amnezia:
+        additional_interface_data = {
+            "Jc": peers[0].Jc,
+            "Jmin": peers[0].Jmin,
+            "Jmax": peers[0].Jmax,
+            "Junk": server_cfg.junk
+        }
 
     for peer in peers:
         if callback_data.peer_id == -1:
             media_group.add_document(
                 media=BufferedInputFile(
-                    file=bytes(get_peer_config_str(peer), encoding="utf-8"),
+                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
                     filename=f"{peer.peer_name or peer.id}_wg.conf"
                 )
             )
         elif peer.id == callback_data.peer_id:
             media_group.add_document(
                 BufferedInputFile(
-                    file=bytes(get_peer_config_str(peer), encoding="utf-8"),
+                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
                     filename=f"{peer.peer_name or peer.id}_wg.conf"
                 )
             )

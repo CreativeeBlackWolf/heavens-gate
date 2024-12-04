@@ -70,3 +70,6 @@ def generate_ip_addresses(basic_ip: str, mask: Union[str, int] = "32") -> list[s
         list[str]: A list of generated IP addresses within the specified subnet.
     """
     return [str(ip) for ip in ipaddress.IPv4Network(f"{basic_ip}.0/{mask}")]
+
+def get_ip_prefix(ip_address: str) -> str:
+    return '.'.join(ip_address.split('.')[:3])

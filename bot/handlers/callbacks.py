@@ -11,20 +11,24 @@ from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
-                                    cancel_keyboard)
+                                    cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
+                                     TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from bot.utils.message_utils import preview_message
-from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
-                              RenamePeerStates, WhisperStates)
-from bot.utils.user_helper import get_user_data_string
+from bot.utils.states import (ContactAdminStates, ExtendTimeStates,
+                              PreviewMessageStates, RenamePeerStates,
+                              WhisperStates)
+from bot.utils.user_helper import extend_users_usage_time, get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
                            interval_observer, wghub)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
+from core.logs import bot_logger
+from core.utils.date_utils import parse_time
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
@@ -194,6 +198,45 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
 @router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.EXTEND_USAGE_TIME)
+)
+async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    keyboard = extend_time_keyboard(client.userdata.telegram_id)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+    await callback.answer()
+    await callback.message.answer("🕒 На сколько продлить время использования?", reply_markup=keyboard)
+
+@router.callback_query(
+    TimeExtenderCallbackData.filter(F.extend_for != "custom")
+)
+async def extend_usage_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    time_to_add = parse_time(callback_data.extend_for)
+
+    if not time_to_add:
+        bot_logger.warning(f"Invalid time format, couldn't parse: {callback_data.extend_for}")
+        await callback.answer(f"❌ Неправильный формат времени: {callback_data.extend_for}")
+        return
+
+    if extend_users_usage_time(client, time_to_add):
+        await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
+    else:
+        await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
+
+@router.callback_query(
+    TimeExtenderCallbackData.filter(F.extend_for == "custom")
+)
+async def extend_usage_time_custom(callback: CallbackQuery, callback_data: TimeExtenderCallbackData, state: FSMContext):
+    await callback.answer()
+    await callback.message.delete()
+    await callback.message.answer(f"📅 Введи время, на которое ты хочешь продлить доступ в формате "
+                                  "<code>число</code> + <code>(d -- дни, w -- недели, M -- месяцы, Y -- годы)</code>: ",
+                                  reply_markup=cancel_keyboard())
+    await state.set_data({"user_id": callback_data.user_id, "extend_for": callback_data.extend_for})
+    await state.set_state(ExtendTimeStates.time_entering)
+
+@router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.CONTACT_ADMIN)
 )
 async def contact_admin_callback(callback: CallbackQuery, state: FSMContext):
@@ -248,6 +291,26 @@ async def contact_admin(message: Message, state: FSMContext):
             f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
         )
     await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")
+
+@router.message(ExtendTimeStates.time_entering)
+async def extend_usage_time_custom_entered(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id, _ = data.values()
+
+    await state.clear()
+
+    time_to_add = parse_time(message.text)
+
+    if not time_to_add:
+        await message.answer(f"❌ Неправильный формат времени: {message.text}")
+        return
+
+    client = ClientFactory(tg_id=user_id).get_client()
+
+    if extend_users_usage_time(client, time_to_add):
+        await message.answer(f"✅ Время использования продлено на {message.text}.")
+    else:
+        await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
 
 @router.message(WhisperStates.message_entering)
 async def whisper_state(message: Message, state: FSMContext):

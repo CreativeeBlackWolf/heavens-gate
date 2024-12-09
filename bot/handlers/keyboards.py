@@ -2,6 +2,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
+                                     TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from core.db.db_works import Client
@@ -41,6 +42,24 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                     is_admin=is_admin
                 )
             )
+
+            builder.button(
+                text="📅 Продлить время",
+                callback_data=UserActionsCallbackData(
+                    action=UserActionsEnum.EXTEND_USAGE_TIME,
+                    user_id=client.userdata.telegram_id,
+                    is_admin=is_admin
+                )
+            )
+
+            builder.button(
+                text="✉️ Отправить сообщение",
+                callback_data=UserActionsCallbackData(
+                    action=UserActionsEnum.WHISPER_USER,
+                    user_id=client.userdata.telegram_id,
+                    is_admin=is_admin
+                )
+            )
         else:
             builder.button(
                 text="🚫 Заблокировать",
@@ -50,14 +69,6 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                     is_admin=is_admin
                 )
             )
-
-        builder.button(text="✉️ Отправить сообщение",
-            callback_data=UserActionsCallbackData(
-                action=UserActionsEnum.WHISPER_USER,
-                user_id=client.userdata.telegram_id,
-                is_admin=is_admin
-            )
-        )
 
     if not is_admin:
         builder.button(
@@ -127,5 +138,37 @@ def cancel_keyboard():
         text="❌ Отмена",
         callback_data="cancel_action"
     )
+
+    return builder.as_markup()
+
+def extend_time_keyboard(user_id: int):
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="Продлить на 1 день",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1d")
+    )
+    builder.button(
+        text="Продлить на 1 неделю",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1w")
+    )
+    builder.button(
+        text="Продлить на 1 месяц",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1M")
+    )
+    builder.button(
+        text="Продлить на 3 месяца",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="3M")
+    )
+    builder.button(
+        text="Продлить на 6 месяцев",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="6M")
+    )
+    builder.button(
+        text="Ввести время",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="custom")
+    )
+
+    builder.adjust(1, repeat=True)
 
     return builder.as_markup()

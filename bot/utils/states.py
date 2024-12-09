@@ -11,5 +11,8 @@ class RenamePeerStates(StatesGroup):
 class ContactAdminStates(StatesGroup):
     message_entering = State()
 
+class ExtendTimeStates(StatesGroup):
+    time_entering = State()
+
 class WhisperStates(StatesGroup):
     message_entering = State()

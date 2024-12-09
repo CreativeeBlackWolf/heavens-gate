@@ -47,3 +47,13 @@ ID: <code>{client.userdata.telegram_id}</code>
 {peers_str or '❌ Нет пиров\n'}
 📅 Дата регистрации: {client.userdata.registered_at.strftime("%d %b %Y в %H:%M")}
 """
+
+def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> bool:
+    now = datetime.datetime.now()
+
+    if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
+        client.userdata.expire_time = now
+
+    client.set_expire_time(client.userdata.expire_time + time_to_add)
+
+    return True

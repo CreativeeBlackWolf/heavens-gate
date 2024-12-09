@@ -29,3 +29,7 @@ class ConnectionPeer(BaseModel):
     peer_name: Optional[str]
     peer_status: PeerStatusChoices
     peer_timer: Optional[datetime]
+    is_amnezia: bool
+    Jc: Optional[int]
+    Jmin: Optional[int]
+    Jmax: Optional[int]

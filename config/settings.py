@@ -27,14 +27,18 @@ class Config:
             path=self.cfg.get("db", "path", fallback="db.sqlite")
         )
 
-    def get_server_config(self):
+    def get_server_config(self, *args, **kwargs):
         return self.Server(
             path=self.cfg.get("Server", "Path", fallback=os.getcwd() + "/wg0.conf"),
             user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
+            user_ip_mask=self.cfg.get("Server", "IPMask", fallback=32),
             private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
             public_key=self.cfg.get("Server", "PublicKey", fallback="@!ChAngEME!@"),
             endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
-            endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000")
+            endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000"),
+            dns_server=self.cfg.get("Server", "DNS", fallback="8.8.8.8"),
+            junk=self.cfg.get("Server", "Junk", fallback=""),
+            *args, **kwargs
         )
 
     def get_core_config(self):
@@ -82,13 +86,28 @@ class Config:
             self.path = path
 
     class Server:
-        def __init__(self, path: str, user_ip: str, private_key: str, public_key: str, endpoint_ip: str, endpoint_port: str):
+        def __init__(self,
+                     path: str,
+                     user_ip: str,
+                     user_ip_mask: str,
+                     private_key: str,
+                     public_key: str,
+                     endpoint_ip: str,
+                     endpoint_port: str,
+                     dns_server: str,
+                     junk: str,
+                     *args, **kwargs):
             self.path = path
             self.user_ip = user_ip
+            self.user_ip_mask = user_ip_mask
             self.private_key = private_key
             self.public_key = public_key
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
+            self.dns_server = dns_server
+            # TODO: split junk into sections (H1, H2 etc...)
+            self.junk = junk
+            self.args, self.kwargs = args, kwargs
 
     class Core:
         def __init__(self,

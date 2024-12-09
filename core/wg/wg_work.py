@@ -10,22 +10,24 @@ from core.logs import core_logger
 
 
 class WGHub:
-    def __init__(self, path: str):
+    def __init__(self, path: str, is_amnezia: bool = False):
         self.path = path
-        self.interface_name = os.path.basename(path).split(".")[0]
-        core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig = wgconfig.WGConfig(path)
+        self.interface_name = os.path.basename(path).split(".")[0]
+
+        core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig.read_file()
+        self.change_command_mode(is_amnezia)
 
     @core_logger.catch
     def sync_config(self):
-        strip = subprocess.run(["wg-quick", "strip", self.path], check=True, capture_output=True, text=True)
+        strip = subprocess.run([f"{self.command}-quick", "strip", self.path], check=True, capture_output=True, text=True)
 
         with tempfile.NamedTemporaryFile() as temp_file:
             temp_file.write(strip.stdout.encode("utf-8"))
             temp_file.flush()
 
-            subprocess.run(["wg", "syncconf", self.interface_name, temp_file.name], check=True)
+            subprocess.run([self.command, "syncconf", self.interface_name, temp_file.name], check=True)
 
     @core_logger.catch
     def apply_and_sync(func: Callable):
@@ -65,6 +67,20 @@ class WGHub:
     @apply_and_sync
     def delete_peer(self, peer: ConnectionPeer):
         self.wgconfig.del_peer(peer.public_key)
+
+    def change_command_mode(self, is_amnezia: bool):
+        """Changes command from `wg` to `awg` to be able to work with amnezia-wg
+
+        Args:
+            is_amnezia (bool): Change to amnezia or not
+        """
+        if is_amnezia:
+            self.is_amnezia = True
+            self.command = "awg"
+            core_logger.info("Changed behaviour to Amnezia WG.")
+        else:
+            self.is_amnezia = False
+            self.command = "wg"
 
 def disable_server(path: str) -> bool:
     """Returns True if server was disabled successfully"""

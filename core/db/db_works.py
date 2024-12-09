@@ -1,4 +1,5 @@
 import datetime
+import random
 from typing import Optional
 
 from multimethod import multimethod
@@ -62,22 +63,34 @@ class Client(BaseModel):
                  public_key: Optional[str] = None,
                  private_key: Optional[str] = None,
                  preshared_key: Optional[str] = None,
+                 is_amnezia: Optional[bool] = False,
                  peer_name: str = None) -> ConnectionPeer:
         """
         Adds peer to database. Automatically generates peer keys if they're not present in arguments.
 
         Returns `ConnectionPeer`.
         """
-        private_peer_key = private_key or generate_private_key()
-        public_peer_key = public_key or generate_public_key(private_peer_key)
-        preshared_peer_key = preshared_key or generate_preshared_key()
+        private_peer_key = private_key or generate_private_key(is_amnezia=is_amnezia)
+        public_peer_key = public_key or generate_public_key(private_peer_key, is_amnezia=is_amnezia)
+        preshared_peer_key = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
+        Jc, Jmin, Jmax = None, None, None
+        if is_amnezia:
+            # ? recommended values for: -- [3, 10], Jmin = 50, Jmax = 1000
+            # ? so they can be changed, but we'll see
+            Jc = random.randint(3, 127)
+            Jmin = random.randint(3, 700)
+            Jmax = random.randint(Jmin + 1, 1270)
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_peer_key,
             private_key=private_peer_key,
             preshared_key=preshared_peer_key,
             shared_ips=shared_ips,
-            peer_name=peer_name
+            peer_name=peer_name,
+            is_amnezia=is_amnezia,
+            Jc=Jc,
+            Jmin=Jmin,
+            Jmax=Jmax,
         ))
 
     def __get_peers(self, *criteria) -> list[ConnectionPeerModel]:

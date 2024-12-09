@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import os
 import random
@@ -12,7 +13,7 @@ from bot.commands import (get_admin_commands, get_default_commands,
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
                            connections_observer, db_instance,
-                           interval_observer)
+                           interval_observer, wghub)
 from core.db.db_works import Client, ClientFactory
 from core.db.model_serializer import ConnectionPeer
 from core.logs import bot_logger
@@ -107,4 +108,14 @@ async def main() -> None:
         group.create_task(bot_dispatcher.start_polling(bot_instance, handle_signals=False))
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="heavens-gate", description="Run bot with core service.")
+    parser.add_argument("-awg", "--amnezia",
+                        help="Enable amnezia-wg functionality.",
+                        action="store_true")
+
+    args = parser.parse_args()
+
+    if args.amnezia:
+        wghub.change_command_mode(is_amnezia=True)
+
     asyncio.run(main())

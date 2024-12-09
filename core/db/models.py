@@ -1,7 +1,7 @@
 import datetime
 
-from peewee import (CharField, DateTimeField, ForeignKeyField, IntegerField,
-                    Model)
+from peewee import (BooleanField, CharField, DateTimeField, ForeignKeyField,
+                    IntegerField, Model)
 from playhouse.sqlite_ext import AutoIncrementField, SqliteExtDatabase
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
@@ -45,6 +45,10 @@ class ConnectionPeerModel(BaseModel):
         )
     )
     peer_timer = DateTimeField(default=None, null=True)
+    is_amnezia = BooleanField(default=False)
+    Jc = IntegerField(default=None, null=True)
+    Jmin = IntegerField(default=None, null=True)
+    Jmax = IntegerField(default=None, null=True)
 
     class Meta:
         table_name = "ConnectionPeers"
